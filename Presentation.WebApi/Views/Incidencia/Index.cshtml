@@ -1,0 +1,229 @@
+﻿
+@{
+    ViewBag.Title = "Incidencias";
+}
+
+<div class="row">
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+            Incidencias
+        </div>
+        <div class="panel-body">
+            <form id="vue" class="form-horizontal">
+                <div class="form-group">
+                    <input type="hidden" v-model="Id">
+                    <label for="Descripcion" class="col-sm-2 control-label">Descripcion</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="Descripcion" placeholder="Descripcion" v-model="Descripcion">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="Fecha" class="col-sm-2 control-label">Fecha</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="Fecha" placeholder="Fecha" v-model="Fecha">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="Tipo" class="col-sm-2 control-label">Tipo</label>
+                    <div class="col-sm-10">
+
+                        <select v-model="TipoId">
+                            <option v-for="option in Tipos" v-bind:value="option.Id">
+                                {{ option.Descripcion }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="Tipo" class="col-sm-2 control-label">Gravedad</label>
+                    <div class="col-sm-10">
+
+                        <select v-model="Gravedad">
+                            <option v-for="gravedad in ListGravedades" v-bind:value="gravedad">
+                                {{gravedad}}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" v-if="Editar">
+                    <label for="Estado" class="col-sm-2 control-label">Estado</label>
+                    <div class="col-sm-10">
+                        <select v-model="Estado">
+                            <option v-for="estado in ListEstados" v-bind:value="estado">
+                                {{estado}}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <button class="btn btn-primary" v-on:click="RegisterData"> Registrar</button>
+                    <button class="btn btn-success" v-on:click="UpdateData" v-if="Editar"> Actualizar</button>
+                </div>
+            </form>
+            <div class="col-md-12">
+                <table id="tableData" class="table col-md-8 table-striped table-hover">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Id</th>
+                            <th>Descripcion</th>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>TipoId</th>
+                            <th>Gravedad</th>
+                            <th>Estado</th>
+                            <th>Opciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="CuerpoDeLaTabla"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel-footer"></div>
+    </div>
+</div>
+
+@section scripts{
+    <script>
+        function createTable() {
+            return $('#tableData').DataTable({
+                dom: 'Bfrtip',
+                buttons: [
+                    'copy', 'csv', 'excel', 'pdf', 'print'
+                ]
+            });
+        }
+        $('#tableData tbody').on('click','td .update',  function () {
+            var table = $('#tableData').DataTable();
+            var id = $(this).attr('data-id');          
+            app.SearchFromServer(id);
+        });
+   
+        $('#tableData tbody').on('click', 'tr .delete', function () {
+            var table = $('#tableData').DataTable();
+            var id = $(this).attr('data-id');
+            app.DeleteData(id);
+        });
+        var app = new Vue({
+            el: '#vue',
+            data: {
+                Editar: false,
+                Id: '',
+                Descripcion: '',
+                Fecha: '',
+                TipoId: '',
+                Gravedad: '',
+                Estado: '',
+                Tipos: [],
+                ListGravedades: ['Leve', 'Moderado'],
+                ListEstados: ['Activo', 'Inactivo'],
+                Table: createTable()
+            },
+            methods: {
+                ClearForm: function () {
+                    this.Id = '';
+                    this.Descripcion = '';
+                    this.Fecha = '';
+                    this.TipoId = '';
+                    this.Gravedad = '';
+                    this.Estado = '';
+                    this.Editar = false;
+                },
+                RegisterData: function () {
+                    var self = this;
+                    axios.post('/api/incidencia/create', this.FormToJSON())
+                        .then(function (response) {
+                          //  self.AddUserToTable(response.data);
+                           // self.UserTable.draw();
+                            self.LoadListFromServer();
+                            self.ClearForm();
+                        });
+                },
+
+                UpdateData: function () {
+
+                    var self = this;
+                    axios.put('/api/incidencia/update', this.FormToJSON() )
+                        .then(function (response) {
+                            //  self.AddUserToTable(response.data);
+                            // self.UserTable.draw();
+                            self.LoadListFromServer();
+                            self.ClearForm();
+                        });
+                },
+                DeleteData: function (id) {
+                    var self = this;
+                    axios.delete('/api/incidencia/delete', { params: { registerId: id } } )
+                        .then(function (response) {
+                            //  self.AddUserToTable(response.data);
+                            // self.UserTable.draw();
+                            self.LoadListFromServer();
+                            self.ClearForm();
+                        });
+                },
+                FormToJSON: function () {
+                    return {
+                        "Id": this.Id,
+                        "Descripcion": this.Descripcion,
+                        "Fecha": this.Fecha,
+                        "TipoId": this.TipoId,
+                        "Gravedad": this.Gravedad,
+                        "Estado": this.Estado,
+                    };
+                },
+                AddToTable: function (Data) {
+                    var btnEdit = '<button data-id="' + Data.Id+'" type="button" class="btn btn-primary update" aria-label="Left Align"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></button >';
+                    var btnDelete = '<button data-id="' + Data.Id +'" type="button" class="btn btn-danger delete" aria-label="Left Align"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button >';
+                    this.Table.row.add([Data.Id, Data.Descripcion, Data.Fecha, Data.TipoId, Data.Tipo, Data.Gravedad, Data.Estado, btnEdit+ btnDelete]);
+                },
+                LoadListFromServer: function () {
+                    var self = this;
+                    self.Table.clear().draw();
+                    axios.get('/api/incidencia/list')
+                        .then(response => {
+                            //self.TipoTable = [];
+                            var List = response.data;
+                            List.forEach(obj => {
+                                self.AddToTable(obj);
+                            });
+                            self.Table.draw();
+                        });
+                },
+                SearchFromServer: function (id) {
+                    var self = this;
+                    axios.get('/api/incidencia/Search', { params: { registerId: id } })
+                        .then(response => {
+                            var incidencia = response.data;
+                            if (incidencia) { 
+                                this.Id = incidencia.Id;
+                                this.Descripcion = incidencia.Descripcion;
+                                this.Fecha = incidencia.Fecha;
+                                this.TipoId = incidencia.TipoId;
+                                this.Gravedad = incidencia.Gravedad;
+                                this.Estado = incidencia.Estado;
+                                self.Editar = true;
+                            }
+                        });
+                },
+                LoadTiposFromServer: function () {
+                    var self = this;
+                    self.Gravedad = self.ListGravedades[0];
+                    axios.get('/api/tipo/list')
+                        .then(response => {
+                            //self.TipoTable = [];
+                            var List = response.data;
+                            self.Tipos = List;
+                            self.TipoId = List[0].Id;
+                        });
+                }
+
+            }
+        });
+        app.LoadTiposFromServer();
+        app.LoadListFromServer();
+
+    </script>
+
+
+}
+
